@@ -1,0 +1,5 @@
+program ComentarioAberto;
+begin
+  { comentario sem fechamento
+  x := 1
+end.

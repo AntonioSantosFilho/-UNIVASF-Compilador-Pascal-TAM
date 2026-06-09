@@ -1,0 +1,17 @@
+program Exemplo;
+var
+  x, y: integer;
+  ok: boolean;
+begin
+  x := 10;
+  y := x div 2 + 3;
+  ok := y >= 8 and true;
+
+  if ok then
+    y := y + 1
+  else
+    y := y - 1;
+
+  while y > 0 do
+    y := y - 1
+end.

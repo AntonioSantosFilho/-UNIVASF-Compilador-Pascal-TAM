@@ -1,0 +1,6 @@
+program ErroSemantico;
+var
+  x: integer;
+begin
+  x := true
+end.
