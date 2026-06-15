@@ -52,7 +52,14 @@ public final class Compiler {
         }
 
         if (options.printAst) {
-            System.out.println("Opcao --ast reconhecida, mas a AST pertence a etapa de Andrea.");
+            No.Programa ast;
+            try {
+                ast = new Parser(tokens).parsePrograma();
+            } catch (ErroSintatico error) {
+                System.err.println(error.getMessage());
+                return 1;
+            }
+            new Printer().imprimir(ast);
         }
 
         if (options.generateCode) {
@@ -60,7 +67,7 @@ public final class Compiler {
         }
 
         if (!options.printTokens && !options.printAst && !options.generateCode) {
-            System.out.println("Analise lexica concluida sem erros.");
+            System.out.println("Analise lexica concluida sem erros. Use --ast para analise sintatica.");
         }
 
         return 0;
