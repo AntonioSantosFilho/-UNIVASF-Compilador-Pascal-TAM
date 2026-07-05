@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 public final class Compiler {
@@ -63,11 +64,53 @@ public final class Compiler {
         }
 
         if (options.generateCode) {
-            System.out.println("Opcao --code reconhecida, mas a geracao de codigo pertence a etapa de Antonio.");
+            // Etapa 2-3: analise sintatica e montagem da AST.
+            No.Programa ast;
+            try {
+                ast = new Parser(tokens).parsePrograma();
+            } catch (ErroSintatico error) {
+                System.err.println(error.getMessage());
+                return 1;
+            }
+
+            // Etapa 4: analise de contexto (tabela de simbolos + verificacao de tipos).
+            TabelaSimbolos tabela;
+            try {
+                tabela = new Checker().verificar(ast);
+            } catch (ErroContexto error) {
+                System.err.println(error.getMessage());
+                return 1;
+            }
+
+            // Etapa 5: geracao de codigo TAM.
+            List<String> codigo = new Coder(tabela).gerar(ast);
+
+            // Formata com enderecos e escreve em arquivo .tam.
+            String nomeSaida = options.inputFile.getFileName().toString()
+                .replaceAll("\\.[^.]+$", "") + ".tam";
+            Path arquivoSaida = options.inputFile.resolveSibling(nomeSaida);
+
+            List<String> linhas = new ArrayList<>();
+            for (int i = 0; i < codigo.size(); i++) {
+                linhas.add(String.format("%3d: %s", i, codigo.get(i)));
+            }
+
+            try {
+                Files.write(arquivoSaida, linhas, StandardCharsets.UTF_8);
+            } catch (IOException error) {
+                System.err.println("Nao foi possivel escrever: " + arquivoSaida);
+                System.err.println(error.getMessage());
+                return 2;
+            }
+
+            System.out.println("Codigo TAM gerado em: " + arquivoSaida);
+            System.out.println("Total de instrucoes: " + codigo.size());
         }
 
         if (!options.printTokens && !options.printAst && !options.generateCode) {
-            System.out.println("Analise lexica concluida sem erros. Use --ast para analise sintatica.");
+            System.out.println("Analise lexica concluida sem erros.");
+            System.out.println("Use --ast para analise sintatica e visualizacao da AST.");
+            System.out.println("Use --code para verificacao de contexto e geracao de codigo TAM.");
         }
 
         return 0;
@@ -83,8 +126,8 @@ public final class Compiler {
         System.out.println("Uso: java -cp bin Compiler <arquivo-fonte> [opcoes]");
         System.out.println("Opcoes:");
         System.out.println("  --tokens    imprime a sequencia de tokens");
-        System.out.println("  --ast       reserva a visualizacao da AST para a etapa sintatica");
-        System.out.println("  --code      reserva a geracao de codigo para a etapa de codigo");
+        System.out.println("  --ast       analisa sintaticamente e imprime a AST");
+        System.out.println("  --code      verifica contexto e gera codigo TAM em arquivo .tam");
         System.out.println("  --help      mostra esta ajuda");
     }
 

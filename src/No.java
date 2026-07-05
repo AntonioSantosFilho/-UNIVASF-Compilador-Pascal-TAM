@@ -120,12 +120,15 @@ public abstract class No {
 
     /** if condicao then entao [else senao] */
     public static final class Se extends Comando {
+        /** Token 'if' — usado para mensagens de erro com linha/coluna. */
+        public final Token token;
         public final Expressao condicao;
         public final Comando entao;
         /** Pode ser null quando não há cláusula else. */
         public final Comando senao;
 
-        public Se(Expressao condicao, Comando entao, Comando senao) {
+        public Se(Token token, Expressao condicao, Comando entao, Comando senao) {
+            this.token = token;
             this.condicao = condicao;
             this.entao = entao;
             this.senao = senao;
@@ -139,10 +142,13 @@ public abstract class No {
 
     /** while condicao do corpo */
     public static final class Enquanto extends Comando {
+        /** Token 'while' — usado para mensagens de erro com linha/coluna. */
+        public final Token token;
         public final Expressao condicao;
         public final Comando corpo;
 
-        public Enquanto(Expressao condicao, Comando corpo) {
+        public Enquanto(Token token, Expressao condicao, Comando corpo) {
+            this.token = token;
             this.condicao = condicao;
             this.corpo = corpo;
         }

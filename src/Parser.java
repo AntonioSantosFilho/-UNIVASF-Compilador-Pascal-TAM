@@ -154,7 +154,7 @@ public final class Parser {
     }
 
     private No.Se parseSe() {
-        consumir(Token.Tipo.SE);
+        Token tokenSe = consumir(Token.Tipo.SE);
         No.Expressao condicao = parseExpressao();
         consumir(Token.Tipo.ENTAO);
         No.Comando entao = parseComando();
@@ -164,15 +164,15 @@ public final class Parser {
             consumir(Token.Tipo.SENAO);
             senao = parseComando();
         }
-        return new No.Se(condicao, entao, senao);
+        return new No.Se(tokenSe, condicao, entao, senao);
     }
 
     private No.Enquanto parseEnquanto() {
-        consumir(Token.Tipo.ENQUANTO);
+        Token tokenEnquanto = consumir(Token.Tipo.ENQUANTO);
         No.Expressao condicao = parseExpressao();
         consumir(Token.Tipo.FACA);
         No.Comando corpo = parseComando();
-        return new No.Enquanto(condicao, corpo);
+        return new No.Enquanto(tokenEnquanto, condicao, corpo);
     }
 
     // ─────────────────────────────────────────────

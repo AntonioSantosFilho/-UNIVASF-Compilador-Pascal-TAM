@@ -1,0 +1,15 @@
+program Valido;
+var
+  x, y: integer;
+  positivo: boolean;
+begin
+  x := 10;
+  y := x div 2 + 3;
+  positivo := y >= 0;
+  if positivo then
+    y := y + 1
+  else
+    y := y - 1;
+  while y > 0 do
+    y := y - 1
+end.
