@@ -11,8 +11,11 @@ public interface Visitor<T> {
     T visitarPrograma(No.Programa no);
     T visitarBloco(No.Bloco no);
     T visitarDeclaracaoVar(No.DeclaracaoVar no);
+    T visitarDeclaracaoProcedimento(No.DeclaracaoProcedimento no);
+    T visitarDeclaracaoFuncao(No.DeclaracaoFuncao no);
     T visitarComposto(No.Composto no);
     T visitarAtribuicao(No.Atribuicao no);
+    T visitarChamadaProcedimento(No.ChamadaProcedimento no);
     T visitarSe(No.Se no);
     T visitarEnquanto(No.Enquanto no);
     T visitarVazio(No.Vazio no);

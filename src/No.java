@@ -53,10 +53,18 @@ public abstract class No {
     public static final class Bloco extends No {
         /** Lista de grupos de declaração de variáveis (pode ser vazia). */
         public final List<DeclaracaoVar> declaracoes;
+        public final List<DeclaracaoSubprograma> subprogramas;
         public final Composto corpo;
 
         public Bloco(List<DeclaracaoVar> declaracoes, Composto corpo) {
+            this(declaracoes, List.of(), corpo);
+        }
+
+        public Bloco(List<DeclaracaoVar> declaracoes,
+                     List<DeclaracaoSubprograma> subprogramas,
+                     Composto corpo) {
             this.declaracoes = declaracoes;
+            this.subprogramas = subprogramas;
             this.corpo = corpo;
         }
 
@@ -79,6 +87,41 @@ public abstract class No {
         @Override
         public <T> T aceitar(Visitor<T> v) {
             return v.visitarDeclaracaoVar(this);
+        }
+    }
+
+    public abstract static class DeclaracaoSubprograma extends No {
+        public final Token nome;
+        public final Bloco bloco;
+
+        protected DeclaracaoSubprograma(Token nome, Bloco bloco) {
+            this.nome = nome;
+            this.bloco = bloco;
+        }
+    }
+
+    public static final class DeclaracaoProcedimento extends DeclaracaoSubprograma {
+        public DeclaracaoProcedimento(Token nome, Bloco bloco) {
+            super(nome, bloco);
+        }
+
+        @Override
+        public <T> T aceitar(Visitor<T> v) {
+            return v.visitarDeclaracaoProcedimento(this);
+        }
+    }
+
+    public static final class DeclaracaoFuncao extends DeclaracaoSubprograma {
+        public final Token tipoRetorno;
+
+        public DeclaracaoFuncao(Token nome, Token tipoRetorno, Bloco bloco) {
+            super(nome, bloco);
+            this.tipoRetorno = tipoRetorno;
+        }
+
+        @Override
+        public <T> T aceitar(Visitor<T> v) {
+            return v.visitarDeclaracaoFuncao(this);
         }
     }
 
@@ -115,6 +158,20 @@ public abstract class No {
         @Override
         public <T> T aceitar(Visitor<T> v) {
             return v.visitarAtribuicao(this);
+        }
+    }
+
+    /** Chamada de procedimento sem parametros. */
+    public static final class ChamadaProcedimento extends Comando {
+        public final Token nome;
+
+        public ChamadaProcedimento(Token nome) {
+            this.nome = nome;
+        }
+
+        @Override
+        public <T> T aceitar(Visitor<T> v) {
+            return v.visitarChamadaProcedimento(this);
         }
     }
 

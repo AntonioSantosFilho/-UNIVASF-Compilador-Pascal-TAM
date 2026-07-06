@@ -2,14 +2,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Tabela de símbolos para variáveis globais do programa.
+ * Tabela de simbolos do programa.
  *
- * Armazena, para cada variável declarada:
- *   - o tipo (INTEIRO ou BOOLEANO);
- *   - o deslocamento em relação ao SB (Stack Base) da máquina TAM.
- *
- * Como a linguagem suportada só possui escopo global (sem procedimentos
- * ou funções nesta versão), uma única tabela cobre todo o programa.
+ * Registra variaveis, procedimentos e funcoes. A geracao de codigo da Etapa 5
+ * usa nomes simbolicos, mas o deslocamento continua disponivel para documentar
+ * a ordem de alocacao na pilha.
  */
 public final class TabelaSimbolos {
 
@@ -22,16 +19,25 @@ public final class TabelaSimbolos {
         }
     }
 
-    /** Informações de uma variável declarada. */
-    public static final class Entrada {
-        /** Tipo da variável. */
-        public final Tipo tipo;
-        /** Offset em palavras a partir de SB (Stack Base). */
-        public final int deslocamento;
+    public enum Categoria {
+        VARIAVEL, PROCEDIMENTO, FUNCAO
+    }
 
-        public Entrada(Tipo tipo, int deslocamento) {
+    /** Informacoes de um simbolo declarado. */
+    public static final class Entrada {
+        public final String nome;
+        public final Categoria categoria;
+        public final Tipo tipo;
+        public final int deslocamento;
+        public final String rotulo;
+
+        public Entrada(String nome, Categoria categoria, Tipo tipo,
+                       int deslocamento, String rotulo) {
+            this.nome = nome;
+            this.categoria = categoria;
             this.tipo = tipo;
             this.deslocamento = deslocamento;
+            this.rotulo = rotulo;
         }
     }
 
@@ -46,26 +52,63 @@ public final class TabelaSimbolos {
     public void declarar(String nome, Tipo tipo, int linha, int coluna) {
         if (tabela.containsKey(nome)) {
             throw new ErroContexto(
-                "variavel '" + nome + "' ja foi declarada", linha, coluna);
+                    "identificador '" + nome + "' ja foi declarado", linha, coluna);
         }
-        tabela.put(nome, new Entrada(tipo, proximo++));
+        tabela.put(nome, new Entrada(nome, Categoria.VARIAVEL, tipo, proximo++, null));
+    }
+
+    public void declararProcedimento(String nome, String rotulo, int linha, int coluna) {
+        declararSubprograma(nome, Categoria.PROCEDIMENTO, null, rotulo, linha, coluna);
+    }
+
+    public void declararFuncao(String nome, Tipo tipo, String rotulo, int linha, int coluna) {
+        declararSubprograma(nome, Categoria.FUNCAO, tipo, rotulo, linha, coluna);
+    }
+
+    private void declararSubprograma(String nome, Categoria categoria, Tipo tipo,
+                                     String rotulo, int linha, int coluna) {
+        if (tabela.containsKey(nome)) {
+            throw new ErroContexto(
+                    "identificador '" + nome + "' ja foi declarado", linha, coluna);
+        }
+        tabela.put(nome, new Entrada(nome, categoria, tipo, -1, rotulo));
     }
 
     /**
-     * Busca uma variável pelo nome.
+     * Busca um simbolo pelo nome.
      *
-     * @throws ErroContexto se o nome não tiver sido declarado.
+     * @throws ErroContexto se o nome nao tiver sido declarado.
      */
     public Entrada buscar(String nome, int linha, int coluna) {
         Entrada e = tabela.get(nome);
         if (e == null) {
             throw new ErroContexto(
-                "variavel '" + nome + "' nao foi declarada", linha, coluna);
+                    "identificador '" + nome + "' nao foi declarado", linha, coluna);
         }
         return e;
     }
 
-    /** Total de variáveis declaradas (= número de palavras a reservar na pilha). */
+    public Entrada buscarVariavelOuFuncao(String nome, int linha, int coluna) {
+        Entrada e = buscar(nome, linha, coluna);
+        if (e.categoria != Categoria.VARIAVEL && e.categoria != Categoria.FUNCAO) {
+            throw new ErroContexto("'" + nome + "' nao pode ser usado como expressao", linha, coluna);
+        }
+        return e;
+    }
+
+    public Entrada buscarProcedimento(String nome, int linha, int coluna) {
+        Entrada e = buscar(nome, linha, coluna);
+        if (e.categoria != Categoria.PROCEDIMENTO) {
+            throw new ErroContexto("'" + nome + "' nao e procedimento", linha, coluna);
+        }
+        return e;
+    }
+
+    public Iterable<Entrada> entradas() {
+        return tabela.values();
+    }
+
+    /** Total de variaveis declaradas (= numero de palavras a reservar na pilha). */
     public int totalVariaveis() {
         return proximo;
     }

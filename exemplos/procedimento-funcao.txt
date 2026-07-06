@@ -1,0 +1,20 @@
+program Subprogramas;
+var
+  x: integer;
+  ok: boolean;
+
+procedure incrementar;
+begin
+  x := x + 1
+end;
+
+function positivo: boolean;
+begin
+  positivo := x > 0
+end;
+
+begin
+  x := 1;
+  incrementar;
+  ok := positivo
+end.

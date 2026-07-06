@@ -60,8 +60,31 @@ public final class Parser {
         if (atual().eh(Token.Tipo.VAR)) {
             declaracoes = parseSecaoVar();
         }
+        List<No.DeclaracaoSubprograma> subprogramas = new ArrayList<>();
+        while (atual().eh(Token.Tipo.PROCEDIMENTO) || atual().eh(Token.Tipo.FUNCAO)) {
+            subprogramas.add(parseSubprograma());
+            consumir(Token.Tipo.PONTO_E_VIRGULA);
+        }
         No.Composto corpo = parseComposto();
-        return new No.Bloco(declaracoes, corpo);
+        return new No.Bloco(declaracoes, subprogramas, corpo);
+    }
+
+    private No.DeclaracaoSubprograma parseSubprograma() {
+        if (atual().eh(Token.Tipo.PROCEDIMENTO)) {
+            consumir(Token.Tipo.PROCEDIMENTO);
+            Token nome = consumir(Token.Tipo.IDENTIFICADOR);
+            consumir(Token.Tipo.PONTO_E_VIRGULA);
+            No.Bloco bloco = parseBloco();
+            return new No.DeclaracaoProcedimento(nome, bloco);
+        }
+
+        consumir(Token.Tipo.FUNCAO);
+        Token nome = consumir(Token.Tipo.IDENTIFICADOR);
+        consumir(Token.Tipo.DOIS_PONTOS);
+        Token tipo = parseTipo();
+        consumir(Token.Tipo.PONTO_E_VIRGULA);
+        No.Bloco bloco = parseBloco();
+        return new No.DeclaracaoFuncao(nome, tipo, bloco);
     }
 
     private List<No.DeclaracaoVar> parseSecaoVar() {
@@ -131,7 +154,10 @@ public final class Parser {
         Token t = atual();
 
         if (t.eh(Token.Tipo.IDENTIFICADOR)) {
-            return parseAtribuicao();
+            if (proximo().eh(Token.Tipo.ATRIBUICAO)) {
+                return parseAtribuicao();
+            }
+            return new No.ChamadaProcedimento(avancar());
         }
         if (t.eh(Token.Tipo.SE)) {
             return parseSe();
@@ -278,10 +304,19 @@ public final class Parser {
         return tokens.get(pos);
     }
 
+    private Token proximo() {
+        if (pos + 1 >= tokens.size()) {
+            return tokens.get(tokens.size() - 1);
+        }
+        return tokens.get(pos + 1);
+    }
+
     private static String nomeAmigavel(Token.Tipo tipo) {
         switch (tipo) {
             case PROGRAMA:        return "program";
             case VAR:             return "var";
+            case PROCEDIMENTO:    return "procedure";
+            case FUNCAO:          return "function";
             case INICIO:          return "begin";
             case FIM:             return "end";
             case SE:              return "if";

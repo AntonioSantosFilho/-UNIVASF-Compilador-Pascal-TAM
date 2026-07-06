@@ -39,7 +39,7 @@ function Invoke-CompilerCase {
     Write-Host "[OK] $Name"
 }
 
-Invoke-CompilerCase "valido1" (Join-Path $root "exemplos\valido1.txt") 0 "FIM_ARQUIVO"
+Invoke-CompilerCase "valido1" (Join-Path $root "exemplos\Teste_Fonte.txt") 0 "FIM_ARQUIVO"
 Invoke-CompilerCase "erro lexico caractere" (Join-Path $root "exemplos\erro-lexico.txt") 1 "caractere inesperado '@'"
 Invoke-CompilerCase "erro comentario aberto" (Join-Path $root "exemplos\erro-lexico-comentario.txt") 1 "comentario iniciado com '{' nao foi fechado"
 
@@ -124,11 +124,12 @@ function Invoke-CodeCase {
 
 # valido2 deve gerar codigo com sucesso
 Invoke-CodeCase "code valido2 gera arquivo tam"  (Join-Path $root "exemplos\valido2.txt") 0 "Codigo TAM gerado"
+Invoke-CodeCase "code procedimento funcao"  (Join-Path $root "exemplos\procedimento-funcao.txt") 0 "Codigo TAM gerado"
 
-# verifica que o arquivo .tam foi criado
-$tamFile = Join-Path $root "exemplos\valido2.tam"
+# verifica que o arquivo .txt de TAM foi criado
+$tamFile = Join-Path $root "exemplos\valido2-tam.txt"
 if (-not (Test-Path $tamFile)) {
-    throw "[code valido2 arquivo existe] arquivo .tam nao foi criado"
+    throw "[code valido2 arquivo existe] arquivo TAM .txt nao foi criado"
 }
 Write-Host "[OK] code valido2 arquivo existe"
 
@@ -143,6 +144,33 @@ if ($tamContent -notlike "*HALT*") {
     throw "[code valido2 contem HALT] arquivo .tam nao contem HALT"
 }
 Write-Host "[OK] code valido2 contem HALT"
+
+if ($tamContent -notlike "*WHILE_*") {
+    throw "[code valido2 contem rotulo] arquivo TAM nao contem rotulo de desvio"
+}
+Write-Host "[OK] code valido2 contem rotulo"
+
+if ($tamContent -notlike "*STORE x*") {
+    throw "[code valido2 usa nomes] arquivo TAM nao referencia variaveis por nome"
+}
+Write-Host "[OK] code valido2 usa nomes"
+
+$subTamFile = Join-Path $root "exemplos\procedimento-funcao-tam.txt"
+$subTamContent = Get-Content $subTamFile -Raw
+if ($subTamContent -notlike "*PROC_incrementar*") {
+    throw "[code procedimento contem rotulo] arquivo TAM nao contem rotulo de procedimento"
+}
+Write-Host "[OK] code procedimento contem rotulo"
+
+if ($subTamContent -notlike "*FUNC_positivo*") {
+    throw "[code funcao contem rotulo] arquivo TAM nao contem rotulo de funcao"
+}
+Write-Host "[OK] code funcao contem rotulo"
+
+if ($subTamContent -notlike "*CALL PROC_incrementar*") {
+    throw "[code chama procedimento] arquivo TAM nao chama procedimento"
+}
+Write-Host "[OK] code chama procedimento"
 
 # erro semantico deve falhar com mensagem de contexto
 Invoke-CodeCase "code erro semantico detectado" (Join-Path $root "exemplos\erro-semantico.txt") 1 "Erro de contexto"

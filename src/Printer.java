@@ -51,6 +51,14 @@ public final class Printer implements Visitor<Void> {
             }
             nivel--;
         }
+        if (!no.subprogramas.isEmpty()) {
+            linha("Subprogramas:");
+            nivel++;
+            for (No.DeclaracaoSubprograma sub : no.subprogramas) {
+                sub.aceitar(this);
+            }
+            nivel--;
+        }
         no.corpo.aceitar(this);
         return null;
     }
@@ -66,6 +74,24 @@ public final class Printer implements Visitor<Void> {
         }
         sb.append(": ").append(no.tipo.lexema);
         linha(sb.toString());
+        return null;
+    }
+
+    @Override
+    public Void visitarDeclaracaoProcedimento(No.DeclaracaoProcedimento no) {
+        linha("procedure " + no.nome.lexema);
+        nivel++;
+        no.bloco.aceitar(this);
+        nivel--;
+        return null;
+    }
+
+    @Override
+    public Void visitarDeclaracaoFuncao(No.DeclaracaoFuncao no) {
+        linha("function " + no.nome.lexema + ": " + no.tipoRetorno.lexema);
+        nivel++;
+        no.bloco.aceitar(this);
+        nivel--;
         return null;
     }
 
@@ -90,6 +116,12 @@ public final class Printer implements Visitor<Void> {
         nivel++;
         no.valor.aceitar(this);
         nivel--;
+        return null;
+    }
+
+    @Override
+    public Void visitarChamadaProcedimento(No.ChamadaProcedimento no) {
+        linha("call " + no.nome.lexema);
         return null;
     }
 

@@ -32,6 +32,8 @@
 public final class Checker implements Visitor<TabelaSimbolos.Tipo> {
 
     private TabelaSimbolos tabela;
+    private GeradorRotulos rotulos;
+    private String funcaoAtual;
 
     /**
      * Ponto de entrada: verifica o programa e retorna a tabela preenchida.
@@ -40,6 +42,8 @@ public final class Checker implements Visitor<TabelaSimbolos.Tipo> {
      */
     public TabelaSimbolos verificar(No.Programa programa) {
         tabela = new TabelaSimbolos();
+        rotulos = new GeradorRotulos();
+        funcaoAtual = null;
         programa.aceitar(this);
         return tabela;
     }
@@ -59,6 +63,22 @@ public final class Checker implements Visitor<TabelaSimbolos.Tipo> {
         for (No.DeclaracaoVar d : no.declaracoes) {
             d.aceitar(this);
         }
+        for (No.DeclaracaoSubprograma sub : no.subprogramas) {
+            if (sub instanceof No.DeclaracaoProcedimento) {
+                tabela.declararProcedimento(
+                    sub.nome.lexema, rotulos.novo("PROC_" + sub.nome.lexema),
+                    sub.nome.linha, sub.nome.coluna);
+            } else {
+                No.DeclaracaoFuncao f = (No.DeclaracaoFuncao) sub;
+                tabela.declararFuncao(
+                    f.nome.lexema, tokenParaTipo(f.tipoRetorno),
+                    rotulos.novo("FUNC_" + f.nome.lexema),
+                    f.nome.linha, f.nome.coluna);
+            }
+        }
+        for (No.DeclaracaoSubprograma sub : no.subprogramas) {
+            sub.aceitar(this);
+        }
         no.corpo.aceitar(this);
         return null;
     }
@@ -69,6 +89,21 @@ public final class Checker implements Visitor<TabelaSimbolos.Tipo> {
         for (Token nome : no.nomes) {
             tabela.declarar(nome.lexema, tipo, nome.linha, nome.coluna);
         }
+        return null;
+    }
+
+    @Override
+    public TabelaSimbolos.Tipo visitarDeclaracaoProcedimento(No.DeclaracaoProcedimento no) {
+        no.bloco.aceitar(this);
+        return null;
+    }
+
+    @Override
+    public TabelaSimbolos.Tipo visitarDeclaracaoFuncao(No.DeclaracaoFuncao no) {
+        String anterior = funcaoAtual;
+        funcaoAtual = no.nome.lexema;
+        no.bloco.aceitar(this);
+        funcaoAtual = anterior;
         return null;
     }
 
@@ -88,6 +123,17 @@ public final class Checker implements Visitor<TabelaSimbolos.Tipo> {
     public TabelaSimbolos.Tipo visitarAtribuicao(No.Atribuicao no) {
         TabelaSimbolos.Entrada entrada = tabela.buscar(
             no.variavel.lexema, no.variavel.linha, no.variavel.coluna);
+        if (entrada.categoria == TabelaSimbolos.Categoria.PROCEDIMENTO) {
+            throw new ErroContexto(
+                "'" + no.variavel.lexema + "' e procedimento e nao recebe atribuicao",
+                no.variavel.linha, no.variavel.coluna);
+        }
+        if (entrada.categoria == TabelaSimbolos.Categoria.FUNCAO
+                && !entrada.nome.equals(funcaoAtual)) {
+            throw new ErroContexto(
+                "'" + no.variavel.lexema + "' e funcao e so pode receber atribuicao dentro do proprio corpo",
+                no.variavel.linha, no.variavel.coluna);
+        }
         TabelaSimbolos.Tipo tipoValor = no.valor.aceitar(this);
         if (entrada.tipo != tipoValor) {
             throw new ErroContexto(
@@ -95,6 +141,12 @@ public final class Checker implements Visitor<TabelaSimbolos.Tipo> {
                 "variavel e " + entrada.tipo + ", expressao e " + tipoValor,
                 no.variavel.linha, no.variavel.coluna);
         }
+        return null;
+    }
+
+    @Override
+    public TabelaSimbolos.Tipo visitarChamadaProcedimento(No.ChamadaProcedimento no) {
+        tabela.buscarProcedimento(no.nome.lexema, no.nome.linha, no.nome.coluna);
         return null;
     }
 
@@ -192,7 +244,8 @@ public final class Checker implements Visitor<TabelaSimbolos.Tipo> {
 
     @Override
     public TabelaSimbolos.Tipo visitarIdentificador(No.Identificador no) {
-        return tabela.buscar(no.token.lexema, no.token.linha, no.token.coluna).tipo;
+        return tabela.buscarVariavelOuFuncao(
+            no.token.lexema, no.token.linha, no.token.coluna).tipo;
     }
 
     @Override

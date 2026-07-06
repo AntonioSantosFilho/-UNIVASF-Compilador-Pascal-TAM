@@ -1,0 +1,27 @@
+program codigo;
+
+var variable1, variable2 : integer;
+v1 : integer;
+v2 : boolean;
+le : integer;
+
+begin
+  variable1 := variable2 + 750 + 89;
+
+  while 1 > 0 do {! Isso e um comentario}
+  begin
+    le := 750 - 89;
+  end;
+
+  if 1 > 2 then
+  begin
+    variable1 := (5 + 750) * 89;
+    v2 := variable1 > 2000;
+  end
+  else
+    variable1 := 750 div 89;
+  
+  variable1 := v1 + 89;
+end
+
+.

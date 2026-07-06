@@ -85,15 +85,13 @@ public final class Compiler {
             // Etapa 5: geracao de codigo TAM.
             List<String> codigo = new Coder(tabela).gerar(ast);
 
-            // Formata com enderecos e escreve em arquivo .tam.
+            // Formata e escreve em arquivo .txt com instrucoes TAM.
             String nomeSaida = options.inputFile.getFileName().toString()
-                .replaceAll("\\.[^.]+$", "") + ".tam";
+                .replaceAll("\\.[^.]+$", "") + "-tam.txt";
             Path arquivoSaida = options.inputFile.resolveSibling(nomeSaida);
 
             List<String> linhas = new ArrayList<>();
-            for (int i = 0; i < codigo.size(); i++) {
-                linhas.add(String.format("%3d: %s", i, codigo.get(i)));
-            }
+            linhas.addAll(codigo);
 
             try {
                 Files.write(arquivoSaida, linhas, StandardCharsets.UTF_8);
@@ -127,7 +125,7 @@ public final class Compiler {
         System.out.println("Opcoes:");
         System.out.println("  --tokens    imprime a sequencia de tokens");
         System.out.println("  --ast       analisa sintaticamente e imprime a AST");
-        System.out.println("  --code      verifica contexto e gera codigo TAM em arquivo .tam");
+        System.out.println("  --code      verifica contexto e gera codigo TAM em arquivo .txt");
         System.out.println("  --help      mostra esta ajuda");
     }
 

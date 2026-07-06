@@ -1,0 +1,22 @@
+JUMP MAIN_0
+PROC_incrementar_0:
+LOAD x
+LOADL 1
+CALL(SB) 7[PB]
+STORE x
+RETURN
+FUNC_positivo_1:
+LOAD x
+LOADL 0
+CALL(SB) 15[PB]
+STORE positivo
+LOAD positivo
+RETURN
+MAIN_0:
+PUSH x, ok
+LOADL 1
+STORE x
+CALL PROC_incrementar_0
+CALL FUNC_positivo_1
+STORE ok
+HALT

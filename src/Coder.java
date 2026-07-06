@@ -47,6 +47,7 @@ public final class Coder implements Visitor<Void> {
 
     private final TabelaSimbolos tabela;
     private final List<String> instrucoes = new ArrayList<>();
+    private final GeradorRotulos rotulos = new GeradorRotulos();
 
     public Coder(TabelaSimbolos tabela) {
         this.tabela = tabela;
@@ -72,6 +73,22 @@ public final class Coder implements Visitor<Void> {
         return instrucoes.size() - 1;
     }
 
+    private void emitirRotulo(String rotulo) {
+        instrucoes.add(rotulo + ":");
+    }
+
+    private void emitirAlocacaoVariaveis() {
+        List<String> nomes = new ArrayList<>();
+        for (TabelaSimbolos.Entrada entrada : tabela.entradas()) {
+            if (entrada.categoria == TabelaSimbolos.Categoria.VARIAVEL) {
+                nomes.add(entrada.nome);
+            }
+        }
+        if (!nomes.isEmpty()) {
+            emitir("PUSH " + String.join(", ", nomes));
+        }
+    }
+
     /** Corrige uma instrução previamente emitida com endereço desconhecido. */
     private void corrigir(int posicao, String instrucao) {
         instrucoes.set(posicao, instrucao);
@@ -88,16 +105,27 @@ public final class Coder implements Visitor<Void> {
 
     @Override
     public Void visitarPrograma(No.Programa no) {
-        no.bloco.aceitar(this);
+        String rotuloPrincipal = rotulos.novo("MAIN");
+        if (!no.bloco.subprogramas.isEmpty()) {
+            emitir("JUMP " + rotuloPrincipal);
+        }
+        for (No.DeclaracaoSubprograma sub : no.bloco.subprogramas) {
+            sub.aceitar(this);
+        }
+        if (!no.bloco.subprogramas.isEmpty()) {
+            emitirRotulo(rotuloPrincipal);
+        }
+        emitirAlocacaoVariaveis();
+        no.bloco.corpo.aceitar(this);
         emitir("HALT");
         return null;
     }
 
     @Override
     public Void visitarBloco(No.Bloco no) {
-        int total = tabela.totalVariaveis();
-        if (total > 0) {
-            emitir("PUSH " + total);
+        emitirAlocacaoVariaveis();
+        for (No.DeclaracaoSubprograma sub : no.subprogramas) {
+            sub.aceitar(this);
         }
         no.corpo.aceitar(this);
         return null;
@@ -106,6 +134,33 @@ public final class Coder implements Visitor<Void> {
     @Override
     public Void visitarDeclaracaoVar(No.DeclaracaoVar no) {
         // Declarações já foram processadas pelo Checker; nada a emitir.
+        return null;
+    }
+
+    @Override
+    public Void visitarDeclaracaoProcedimento(No.DeclaracaoProcedimento no) {
+        TabelaSimbolos.Entrada entrada = tabela.buscar(
+            no.nome.lexema, no.nome.linha, no.nome.coluna);
+        emitirRotulo(entrada.rotulo);
+        for (No.DeclaracaoSubprograma sub : no.bloco.subprogramas) {
+            sub.aceitar(this);
+        }
+        no.bloco.corpo.aceitar(this);
+        emitir("RETURN");
+        return null;
+    }
+
+    @Override
+    public Void visitarDeclaracaoFuncao(No.DeclaracaoFuncao no) {
+        TabelaSimbolos.Entrada entrada = tabela.buscar(
+            no.nome.lexema, no.nome.linha, no.nome.coluna);
+        emitirRotulo(entrada.rotulo);
+        for (No.DeclaracaoSubprograma sub : no.bloco.subprogramas) {
+            sub.aceitar(this);
+        }
+        no.bloco.corpo.aceitar(this);
+        emitir("LOAD " + no.nome.lexema);
+        emitir("RETURN");
         return null;
     }
 
@@ -128,61 +183,46 @@ public final class Coder implements Visitor<Void> {
         // Armazena no endereço da variável.
         TabelaSimbolos.Entrada entrada = tabela.buscar(
             no.variavel.lexema, no.variavel.linha, no.variavel.coluna);
-        emitir("STORE(1) " + entrada.deslocamento + "[SB]");
+        emitir("STORE " + entrada.nome);
+        return null;
+    }
+
+    @Override
+    public Void visitarChamadaProcedimento(No.ChamadaProcedimento no) {
+        TabelaSimbolos.Entrada entrada = tabela.buscarProcedimento(
+            no.nome.lexema, no.nome.linha, no.nome.coluna);
+        emitir("CALL " + entrada.rotulo);
         return null;
     }
 
     @Override
     public Void visitarSe(No.Se no) {
-        // Avalia a condição (deixa 0 ou 1 no topo da pilha).
+        String rotuloElse = rotulos.novo("ELSE");
+        String rotuloFim = rotulos.novo("FIM_IF");
+
         no.condicao.aceitar(this);
-
-        // Desvio condicional: se false (0), pula o ramo then.
-        int posJumpFalso = emitir("JUMPIF(0) ?[CB]"); // endereço corrigido depois
-
-        // Ramo then.
+        emitir("JUMPIF(0) " + (no.senao == null ? rotuloFim : rotuloElse));
         no.entao.aceitar(this);
-
         if (no.senao != null) {
-            // Ao final do then, pula o ramo else.
-            int posJumpFim = emitir("JUMP ?[CB]");
-            // Aqui começa o ramo else.
-            int enderecoElse = enderecoAtual();
-            corrigir(posJumpFalso, "JUMPIF(0) " + enderecoElse + "[CB]");
+            emitir("JUMP " + rotuloFim);
+            emitirRotulo(rotuloElse);
             no.senao.aceitar(this);
-            // Aqui termina o if-else.
-            int enderecoFim = enderecoAtual();
-            corrigir(posJumpFim, "JUMP " + enderecoFim + "[CB]");
-        } else {
-            // Sem else: o jump-if-false vai diretamente para depois do then.
-            int enderecoFim = enderecoAtual();
-            corrigir(posJumpFalso, "JUMPIF(0) " + enderecoFim + "[CB]");
         }
-
+        emitirRotulo(rotuloFim);
         return null;
     }
 
     @Override
     public Void visitarEnquanto(No.Enquanto no) {
-        // Marca o início do loop (volta aqui após cada iteração).
-        int enderecoLoop = enderecoAtual();
+        String rotuloInicio = rotulos.novo("WHILE");
+        String rotuloFim = rotulos.novo("FIM_WHILE");
 
-        // Avalia a condição.
+        emitirRotulo(rotuloInicio);
         no.condicao.aceitar(this);
-
-        // Se false (0), sai do loop.
-        int posJumpSaida = emitir("JUMPIF(0) ?[CB]");
-
-        // Corpo do loop.
+        emitir("JUMPIF(0) " + rotuloFim);
         no.corpo.aceitar(this);
-
-        // Retorna ao início do loop.
-        emitir("JUMP " + enderecoLoop + "[CB]");
-
-        // Aqui termina o while.
-        int enderecoFim = enderecoAtual();
-        corrigir(posJumpSaida, "JUMPIF(0) " + enderecoFim + "[CB]");
-
+        emitir("JUMP " + rotuloInicio);
+        emitirRotulo(rotuloFim);
         return null;
     }
 
@@ -238,9 +278,13 @@ public final class Coder implements Visitor<Void> {
 
     @Override
     public Void visitarIdentificador(No.Identificador no) {
-        TabelaSimbolos.Entrada entrada = tabela.buscar(
+        TabelaSimbolos.Entrada entrada = tabela.buscarVariavelOuFuncao(
             no.token.lexema, no.token.linha, no.token.coluna);
-        emitir("LOAD(1) " + entrada.deslocamento + "[SB]");
+        if (entrada.categoria == TabelaSimbolos.Categoria.FUNCAO) {
+            emitir("CALL " + entrada.rotulo);
+        } else {
+            emitir("LOAD " + entrada.nome);
+        }
         return null;
     }
 
