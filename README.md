@@ -39,15 +39,15 @@ Desenvolvido para a disciplina de **Compiladores** do curso de Engenharia da Com
 
 ```mermaid
 flowchart LR
-    A[Programa Pascal] --> B[Scanner]
-    B --> C[Tokens]
-    C --> D[Parser LL(1)]
-    D --> E[AST]
-    E --> F[Checker]
-    F --> G[Tabela de símbolos]
-    E --> H[Coder]
+    A["Programa Pascal"] --> B["Scanner"]
+    B --> C["Tokens"]
+    C --> D["Parser LL(1)"]
+    D --> E["AST"]
+    E --> F["Checker"]
+    F --> G["Tabela de símbolos"]
+    E --> H["Coder"]
     G --> H
-    H --> I[Código TAM]
+    H --> I["Código TAM"]
 ```
 
 O projeto usa o padrão **Visitor** para separar as operações realizadas sobre a AST. As responsabilidades principais são:
